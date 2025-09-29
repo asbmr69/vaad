@@ -1,224 +1,539 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Founder Connect</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Founder Connect - Real-time Chat & Forum</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        
+        .chat-bubble {
+            max-width: 70%;
+            word-wrap: break-word;
+            animation: slideIn 0.2s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar-hidden {
+                transform: translateX(-100%);
+            }
+        }
+        
+        .message-input {
+            resize: none;
+            min-height: 44px;
+            max-height: 200px;
+        }
+        
+        .thread-item:hover {
+            background-color: rgba(79, 70, 229, 0.1);
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
 </head>
-<body class="bg-gray-50 h-screen overflow-hidden">
+<body class="bg-gray-100">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar-transition w-80 bg-gray-900 text-white flex flex-col fixed md:relative h-full z-20">
+            <!-- User Profile Section -->
+            <div class="p-4 border-b border-gray-700">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-lg">
+                            <span id="userInitial">U</span>
+                        </div>
+                        <div class="flex-1">
+                            <div id="userNameDisplay" class="font-semibold text-sm"></div>
+                            <div class="text-xs text-gray-400" id="userIdDisplay"></div>
+                        </div>
+                    </div>
+                    <button id="editProfileBtn" class="text-gray-400 hover:text-white transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex items-center space-x-2 text-xs text-gray-400">
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span id="activeUsersCount">0 users online</span>
+                </div>
+            </div>
 
-  <!-- Header -->
-  <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 shadow-lg">
-    <div class="max-w-7xl mx-auto flex justify-between items-center">
-      <h1 class="text-2xl font-bold">🚀 Founder Connect</h1>
-      <div class="flex items-center gap-4">
-        <span class="text-sm bg-white/20 px-3 py-1 rounded-full">
-          <span id="active-users">0</span> online
-        </span>
-        <button onclick="openProfileModal()" 
-          class="text-sm bg-white text-blue-600 px-3 py-1 rounded-full hover:bg-gray-200 transition">
-          Edit Profile
-        </button>
-        <span class="text-sm bg-white/20 px-3 py-1 rounded-full" id="user-badge">Guest</span>
-      </div>
-    </div>
-  </header>
+            <!-- Navigation -->
+            <div class="flex-1 overflow-y-auto scrollbar-thin">
+                <!-- Global Chat Button -->
+                <button id="globalChatBtn" class="w-full px-4 py-3 text-left hover:bg-gray-800 transition flex items-center space-x-3 bg-gray-800">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                    <span class="font-semibold">Global Chat</span>
+                </button>
 
-  <!-- Main Container -->
-  <div class="flex flex-col lg:flex-row h-[calc(100vh-72px)] max-w-7xl mx-auto">
-    <!-- Sidebar -->
-    <aside id="sidebar" class="w-full lg:w-80 bg-white border-r border-gray-200 overflow-y-auto">
-      <div class="p-4 border-b border-gray-200 sticky top-0 bg-white">
-        <h2 class="text-xl font-bold mb-3">📋 Threads</h2>
-        <button onclick="openNewThreadModal()" 
-          class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
-          ➕ New Thread
-        </button>
-      </div>
-      <div id="thread-list" class="p-4 space-y-3"></div>
-    </aside>
+                <!-- Create Thread Button -->
+                <button id="createThreadBtn" class="w-full px-4 py-3 text-left hover:bg-gray-800 transition flex items-center space-x-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    <span class="font-semibold">Create Thread</span>
+                </button>
 
-    <!-- Chat + Thread Sections -->
-    <main class="flex-1 flex flex-col overflow-hidden">
-      <!-- Tabs -->
-      <div class="bg-white border-b border-gray-200 flex">
-        <button onclick="showTab('chat')" id="tab-chat" 
-          class="flex-1 px-4 py-3 font-medium border-b-2 border-blue-600 text-blue-600">
-          💬 Global Chat
-        </button>
-        <button onclick="showTab('thread')" id="tab-thread" 
-          class="flex-1 px-4 py-3 font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
-          📄 Thread View
-        </button>
-      </div>
+                <!-- Threads List -->
+                <div class="mt-4">
+                    <div class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">Threads</div>
+                    <div id="threadsList" class="space-y-1"></div>
+                </div>
+            </div>
 
-      <!-- Chat -->
-      <div id="chat-section" class="flex-1 flex flex-col overflow-hidden">
-        <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50"></div>
-        <div class="bg-white border-t border-gray-200 p-4">
-          <div class="flex gap-2">
-            <input id="chat-input" type="text" placeholder="Type your message..."
-              class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onkeypress="if(event.key==='Enter') sendChatMessage()">
-            <button onclick="sendChatMessage()" 
-              class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition w-full sm:w-auto">
-              Send
+            <!-- Close button for mobile -->
+            <button id="closeSidebarBtn" class="md:hidden absolute top-4 right-4 text-gray-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
             </button>
-          </div>
         </div>
-      </div>
 
-      <!-- Thread -->
-      <div id="thread-section" class="flex-1 flex-col overflow-hidden hidden">
-        <div class="flex-1 overflow-y-auto p-6 bg-white">
-          <div id="thread-detail" class="text-center text-gray-500 mt-20">
-            <p class="text-xl">👈 Select a thread to view</p>
-          </div>
-        </div>
-        <div id="reply-section" class="bg-white border-t border-gray-200 p-4 hidden">
-          <div class="flex gap-2">
-            <input id="reply-input" type="text" placeholder="Type your reply..." 
-              class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onkeypress="if(event.key==='Enter') sendReply()">
-            <button onclick="sendReply()" 
-              class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition w-full sm:w-auto">
-              Reply
-            </button>
-          </div>
-        </div>
-      </div>
-    </main>
-  </div>
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col bg-white">
+            <!-- Header -->
+            <div class="h-16 border-b border-gray-200 flex items-center justify-between px-4 bg-white">
+                <div class="flex items-center space-x-3">
+                    <button id="toggleSidebarBtn" class="md:hidden text-gray-600 hover:text-gray-900">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    <h1 id="chatTitle" class="text-xl font-bold text-gray-900">Global</h1>
+                </div>
+                <div class="text-sm text-gray-500" id="chatInfo">People with same goal</div>
+            </div>
 
-  <!-- Profile Modal -->
-  <div id="profile-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
-      <h3 class="text-2xl font-bold mb-4">Edit Profile</h3>
-      <input id="profile-name" type="text" placeholder="Your name" 
-        class="w-full p-3 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-      <div class="flex gap-2">
-        <button onclick="saveProfile()" 
-          class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Save</button>
-        <button onclick="closeProfileModal()" 
-          class="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition">Cancel</button>
-      </div>
+            <!-- Messages Area -->
+            <div id="messagesArea" class="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin bg-gray-50"></div>
+
+            <!-- Message Input -->
+            <div class="border-t border-gray-200 p-4 bg-white">
+                <div class="flex items-end space-x-2">
+                    <textarea
+                        id="messageInput"
+                        class="message-input flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Type your message..."
+                        rows="1"
+                    ></textarea>
+                    <button id="sendBtn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-semibold">
+                        Send
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- New Thread Modal -->
-  <div id="thread-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
-      <h3 class="text-2xl font-bold mb-4">Create New Thread</h3>
-      <input id="thread-title" type="text" placeholder="Thread Title" 
-        class="w-full p-3 border border-gray-300 rounded-lg mb-3">
-      <select id="thread-category" class="w-full p-3 border border-gray-300 rounded-lg mb-3">
-        <option value="">Select Category</option>
-        <option value="funding">💰 Funding</option>
-        <option value="lesson">📚 Lessons</option>
-        <option value="challenge">⚡ Challenges</option>
-        <option value="opportunity">🎯 Opportunities</option>
-      </select>
-      <textarea id="thread-content" placeholder="Share your story..." 
-        class="w-full p-3 border border-gray-300 rounded-lg mb-4 h-32"></textarea>
-      <div class="flex gap-2">
-        <button onclick="createThread()" 
-          class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Create</button>
-        <button onclick="closeThreadModal()" 
-          class="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition">Cancel</button>
-      </div>
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 class="text-2xl font-bold mb-4">Edit Profile</h2>
+            <div class="mb-4">
+                <label class="block text-sm font-semibold mb-2">Display Name</label>
+                <input type="text" id="editNameInput" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter your name">
+            </div>
+            <div class="flex space-x-3">
+                <button id="saveProfileBtn" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition font-semibold">Save</button>
+                <button id="cancelProfileBtn" class="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition font-semibold">Cancel</button>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <script>
-    let ws = null;
-    let userId = 'user_' + Math.random().toString(36).substr(2, 9);
-    let displayName = localStorage.getItem('displayName') || "Guest_" + userId.substr(5,4);
-    let currentThreadId = null;
+    <!-- Create Thread Modal -->
+    <div id="createThreadModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg p-6 max-w-lg w-full">
+            <h2 class="text-2xl font-bold mb-4">Create New Thread</h2>
+            <div class="mb-4">
+                <label class="block text-sm font-semibold mb-2">Title</label>
+                <input type="text" id="threadTitle" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Thread title">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-semibold mb-2">Category</label>
+                <select id="threadCategory" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="funding">💰 Funding</option>
+                    <option value="lessons">📚 Lessons</option>
+                    <option value="challenges">⚡ Challenges</option>
+                    <option value="opportunities">🎯 Opportunities</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-semibold mb-2">Content</label>
+                <textarea id="threadContent" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="4" placeholder="What's on your mind?"></textarea>
+            </div>
+            <div class="flex space-x-3">
+                <button id="submitThreadBtn" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition font-semibold">Create Thread</button>
+                <button id="cancelThreadBtn" class="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition font-semibold">Cancel</button>
+            </div>
+        </div>
+    </div>
 
-    document.getElementById('user-badge').textContent = displayName;
+    <script>
+        // State
+        let userId = generateUserId();
+        let userName = localStorage.getItem('userName') || 'Guest';
+        let ws = null;
+        let currentView = 'global-chat';
+        let currentThreadId = null;
+        let threads = [];
 
-    function openProfileModal(){document.getElementById('profile-modal').classList.remove('hidden');document.getElementById('profile-name').value=displayName;}
-    function closeProfileModal(){document.getElementById('profile-modal').classList.add('hidden');}
-    function saveProfile(){const n=document.getElementById('profile-name').value.trim();if(n){displayName=n;localStorage.setItem('displayName',n);document.getElementById('user-badge').textContent=n;}closeProfileModal();}
+        // Initialize
+        function init() {
+            updateUserProfile();
+            connectWebSocket();
+            loadThreads();
+            setupEventListeners();
+            autoResizeTextarea();
+        }
 
-    function connectWebSocket(){
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/${userId}`;
-      ws = new WebSocket(wsUrl);
-      ws.onmessage = e => handleMessage(JSON.parse(e.data));
-    }
-    connectWebSocket();
+        function generateUserId() {
+            return 'user_' + Math.random().toString(36).substr(2, 9);
+        }
 
-    function handleMessage(data){
-      if(data.type==="chat_message") addChatMessage(data.message);
-      if(data.type==="new_thread") loadThreads();
-      if(data.type==="new_reply" && currentThreadId===data.thread_id) addReplyToThread(data.reply);
-      if(data.type==="user_joined"||data.type==="user_left") document.getElementById('active-users').textContent=data.active_users;
-    }
+        function updateUserProfile() {
+            const initial = userName.charAt(0).toUpperCase();
+            document.getElementById('userInitial').textContent = initial;
+            document.getElementById('userNameDisplay').textContent = userName;
+            document.getElementById('userIdDisplay').textContent = userId;
+        }
 
-    function sendChatMessage(){
-      const input=document.getElementById('chat-input');const msg=input.value.trim();
-      if(msg && ws.readyState===WebSocket.OPEN){
-        ws.send(JSON.stringify({type:"chat_message",message:msg,name:displayName}));
-        input.value="";
-      }
-    }
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/${userId}`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                loadChatMessages();
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
 
-    function addChatMessage(msg){
-      const chatBox=document.getElementById('chat-box');const div=document.createElement('div');
-      div.className="bg-white p-3 rounded-lg shadow";div.innerHTML=`<b>${msg.name}:</b> ${msg.message}`;
-      chatBox.appendChild(div);chatBox.scrollTop=chatBox.scrollHeight;
-    }
+        function handleWebSocketMessage(data) {
+            switch(data.type) {
+                case 'chat_message':
+                    if (currentView === 'global-chat') {
+                        appendMessage(data.message);
+                    }
+                    break;
+                case 'new_thread':
+                    threads.push(data.thread);
+                    renderThreadsList();
+                    break;
+                case 'new_reply':
+                    if (currentView === 'thread' && currentThreadId === data.thread_id) {
+                        appendReply(data.reply);
+                    }
+                    break;
+                case 'user_joined':
+                case 'user_left':
+                    document.getElementById('activeUsersCount').textContent = `${data.active_users} users online`;
+                    break;
+            }
+        }
 
-    async function loadThreads(){
-      const res=await fetch("/api/threads");const data=await res.json();const list=document.getElementById("thread-list");list.innerHTML="";
-      data.threads.forEach(t=>{
-        const d=document.createElement("div");d.className="bg-gray-100 p-3 rounded cursor-pointer hover:bg-gray-200";
-        d.onclick=()=>loadThread(t.id);d.innerHTML=`<b>${t.title}</b><p class="text-sm text-gray-600">${t.content}</p>`;
-        list.appendChild(d);
-      });
-    }
+        async function loadThreads() {
+            try {
+                const response = await fetch('/api/threads');
+                const data = await response.json();
+                threads = data.threads;
+                renderThreadsList();
+            } catch (error) {
+                console.error('Error loading threads:', error);
+            }
+        }
 
-    async function loadThread(id){
-      currentThreadId=id;const res=await fetch(`/api/threads/${id}`);const t=await res.json();
-      document.getElementById("thread-detail").innerHTML=`<h2 class="text-2xl font-bold">${t.title}</h2><p class="mb-4">${t.content}</p><div id="replies-list"></div>`;
-      document.getElementById("reply-section").classList.remove("hidden");
-      t.replies.forEach(addReplyToThread);
-      showTab("thread");
-    }
+        async function loadChatMessages() {
+            try {
+                const response = await fetch('/api/chat/messages');
+                const data = await response.json();
+                document.getElementById('messagesArea').innerHTML = '';
+                data.messages.forEach(msg => appendMessage(msg));
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
 
-    function addReplyToThread(r){
-      const list=document.getElementById("replies-list");const d=document.createElement("div");
-      d.className="bg-gray-50 p-2 rounded mb-2";d.innerHTML=`<b>${r.name}:</b> ${r.content}`;
-      list.appendChild(d);
-    }
+        function renderThreadsList() {
+            const container = document.getElementById('threadsList');
+            container.innerHTML = threads.map(thread => {
+                const icon = getCategoryIcon(thread.category);
+                return `
+                    <button class="thread-item w-full px-4 py-3 text-left hover:bg-gray-800 transition" data-thread-id="${thread.id}">
+                        <div class="flex items-start space-x-2">
+                            <span class="text-lg">${icon}</span>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-semibold text-sm truncate">${escapeHtml(thread.title)}</div>
+                                <div class="text-xs text-gray-400">${thread.replies.length} replies</div>
+                            </div>
+                        </div>
+                    </button>
+                `;
+            }).join('');
 
-    async function sendReply(){
-      const input=document.getElementById("reply-input");const c=input.value.trim();
-      if(c&&currentThreadId){await fetch(`/api/threads/${currentThreadId}/reply`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({content:c,name:displayName})});input.value="";}
-    }
+            document.querySelectorAll('.thread-item').forEach(btn => {
+                btn.addEventListener('click', () => openThread(btn.dataset.threadId));
+            });
+        }
 
-    function openNewThreadModal(){document.getElementById("thread-modal").classList.remove("hidden");}
-    function closeThreadModal(){document.getElementById("thread-modal").classList.add("hidden");}
+        function getCategoryIcon(category) {
+            const icons = {
+                funding: '💰',
+                lessons: '📚',
+                challenges: '⚡',
+                opportunities: '🎯'
+            };
+            return icons[category] || '📌';
+        }
 
-    async function createThread(){
-      const title=document.getElementById("thread-title").value.trim();
-      const cat=document.getElementById("thread-category").value;
-      const content=document.getElementById("thread-content").value.trim();
-      if(!title||!cat||!content){alert("Fill all fields");return;}
-      await fetch("/api/threads",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title,category:cat,content})});
-      closeThreadModal();loadThreads();
-    }
+        function appendMessage(msg) {
+            const messagesArea = document.getElementById('messagesArea');
+            const isOwn = msg.user_id === userId;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${isOwn ? 'justify-end' : 'justify-start'}`;
+            
+            messageDiv.innerHTML = `
+                <div class="chat-bubble ${isOwn ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-900'} rounded-2xl px-4 py-2">
+                    ${!isOwn ? `<div class="text-xs font-semibold mb-1 ${isOwn ? 'text-indigo-200' : 'text-gray-600'}">${escapeHtml(msg.name)}</div>` : ''}
+                    <div class="text-sm whitespace-pre-wrap">${escapeHtml(msg.message)}</div>
+                    <div class="text-xs mt-1 ${isOwn ? 'text-indigo-200' : 'text-gray-500'}">${formatTime(msg.timestamp)}</div>
+                </div>
+            `;
+            
+            messagesArea.appendChild(messageDiv);
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
 
-    function showTab(tab){
-      document.getElementById("chat-section").classList.add("hidden");
-      document.getElementById("thread-section").classList.add("hidden");
-      if(tab==="chat")document.getElementById("chat-section").classList.remove("hidden");
-      else document.getElementById("thread-section").classList.remove("hidden");
-    }
+        function appendReply(reply) {
+            const messagesArea = document.getElementById('messagesArea');
+            
+            const replyDiv = document.createElement('div');
+            replyDiv.className = 'flex justify-start';
+            
+            replyDiv.innerHTML = `
+                <div class="chat-bubble bg-gray-200 text-gray-900 rounded-2xl px-4 py-2">
+                    <div class="text-xs font-semibold mb-1 text-gray-600">${escapeHtml(reply.name)}</div>
+                    <div class="text-sm whitespace-pre-wrap">${escapeHtml(reply.content)}</div>
+                    <div class="text-xs mt-1 text-gray-500">${formatTime(reply.created_at)}</div>
+                </div>
+            `;
+            
+            messagesArea.appendChild(replyDiv);
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
 
-    loadThreads();
-  </script>
+        async function openThread(threadId) {
+            try {
+                const response = await fetch(`/api/threads/${threadId}`);
+                const thread = await response.json();
+                
+                currentView = 'thread';
+                currentThreadId = threadId;
+                
+                document.getElementById('chatTitle').textContent = thread.title;
+                document.getElementById('chatInfo').textContent = `${getCategoryIcon(thread.category)} ${thread.category}`;
+                
+                const messagesArea = document.getElementById('messagesArea');
+                messagesArea.innerHTML = `
+                    <div class="bg-white rounded-lg p-6 mb-4 border border-gray-200">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <span class="text-2xl">${getCategoryIcon(thread.category)}</span>
+                            <h2 class="text-xl font-bold">${escapeHtml(thread.title)}</h2>
+                        </div>
+                        <p class="text-gray-700 whitespace-pre-wrap">${escapeHtml(thread.content)}</p>
+                        <div class="text-xs text-gray-500 mt-2">${formatTime(thread.created_at)}</div>
+                    </div>
+                    <div class="border-t border-gray-200 pt-4">
+                        <h3 class="font-semibold mb-4 text-gray-700">Replies (${thread.replies.length})</h3>
+                    </div>
+                `;
+                
+                thread.replies.forEach(reply => appendReply(reply));
+                
+                closeSidebar();
+            } catch (error) {
+                console.error('Error loading thread:', error);
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            if (currentView === 'global-chat') {
+                ws.send(JSON.stringify({
+                    type: 'chat_message',
+                    name: userName,
+                    message: message
+                }));
+            } else if (currentView === 'thread') {
+                fetch(`/api/threads/${currentThreadId}/reply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: message, name: userName })
+                });
+            }
+            
+            input.value = '';
+            input.style.height = 'auto';
+        }
+
+        function setupEventListeners() {
+            document.getElementById('sendBtn').addEventListener('click', sendMessage);
+            document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            document.getElementById('globalChatBtn').addEventListener('click', () => {
+                currentView = 'global-chat';
+                currentThreadId = null;
+                document.getElementById('chatTitle').textContent = 'Global';
+                document.getElementById('chatInfo').textContent = 'People with same goal';
+                loadChatMessages();
+                closeSidebar();
+            });
+
+            document.getElementById('createThreadBtn').addEventListener('click', () => {
+                document.getElementById('createThreadModal').classList.remove('hidden');
+            });
+
+            document.getElementById('submitThreadBtn').addEventListener('click', async () => {
+                const title = document.getElementById('threadTitle').value.trim();
+                const content = document.getElementById('threadContent').value.trim();
+                const category = document.getElementById('threadCategory').value;
+
+                if (!title || !content) {
+                    alert('Please fill in all fields');
+                    return;
+                }
+
+                try {
+                    await fetch('/api/threads', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title, content, category })
+                    });
+
+                    document.getElementById('threadTitle').value = '';
+                    document.getElementById('threadContent').value = '';
+                    document.getElementById('createThreadModal').classList.add('hidden');
+                } catch (error) {
+                    console.error('Error creating thread:', error);
+                }
+            });
+
+            document.getElementById('cancelThreadBtn').addEventListener('click', () => {
+                document.getElementById('createThreadModal').classList.add('hidden');
+            });
+
+            document.getElementById('editProfileBtn').addEventListener('click', () => {
+                document.getElementById('editNameInput').value = userName;
+                document.getElementById('editProfileModal').classList.remove('hidden');
+            });
+
+            document.getElementById('saveProfileBtn').addEventListener('click', () => {
+                const newName = document.getElementById('editNameInput').value.trim();
+                if (newName) {
+                    userName = newName;
+                    localStorage.setItem('userName', userName);
+                    updateUserProfile();
+                    document.getElementById('editProfileModal').classList.add('hidden');
+                }
+            });
+
+            document.getElementById('cancelProfileBtn').addEventListener('click', () => {
+                document.getElementById('editProfileModal').classList.add('hidden');
+            });
+
+            document.getElementById('toggleSidebarBtn').addEventListener('click', toggleSidebar);
+            document.getElementById('closeSidebarBtn').addEventListener('click', closeSidebar);
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('sidebar-hidden');
+        }
+
+        function closeSidebar() {
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('sidebar-hidden');
+            }
+        }
+
+        function autoResizeTextarea() {
+            const textarea = document.getElementById('messageInput');
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return 'just now';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+            return date.toLocaleDateString();
+        }
+
+        init();
+    </script>
 </body>
 </html>
